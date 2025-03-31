@@ -6,7 +6,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 
 object RetrofitClient {
-    private const val BASE_URL = "https://9b0e-106-217-214-109.ngrok-free.app/api/"
+    private const val BASE_URL = "https://3c8e-223-187-11-61.ngrok-free.app/api/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
