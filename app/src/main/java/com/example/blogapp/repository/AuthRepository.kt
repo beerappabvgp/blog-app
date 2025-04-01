@@ -16,15 +16,28 @@ class AuthRepository(context: Context) {
     private val api = RetrofitClient.instance.create(AuthApi::class.java)
     private val tokenManager = TokenManager(context)
 
-    fun login(email: String, password: String, callback: (Response<LoginResponse>?) -> Unit) {
+    fun login(email: String, password: String, callback: (Boolean) -> Unit) {
         val request = LoginRequest(email, password)
         api.login(request).enqueue(object : Callback<LoginResponse> {
             override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
-                callback(response)
+                if (response.isSuccessful) {
+                    val user = response.body()?.user
+                    val token = response.body()?.token
+
+                    if (user != null && token != null) {
+                        tokenManager.saveToken(token)
+                        tokenManager.saveUser(user)  // Save user details
+                        callback(true)
+                    } else {
+                        callback(false)
+                    }
+                } else {
+                    callback(false)
+                }
             }
 
             override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
-                callback(null)
+                callback(false)
             }
         })
     }
@@ -33,6 +46,7 @@ class AuthRepository(context: Context) {
         context: Context,
         username: String,
         email: String,
+        about: String,
         password: String,
         imageUri: Uri,
         callback: (Response<SignUpResponse>?) -> Unit
@@ -49,17 +63,18 @@ class AuthRepository(context: Context) {
             return
         }
 
-        // Create multipart request body using the new extension function
+        // Create multipart request body
         val requestFile = byteArray.toRequestBody("image/*".toMediaTypeOrNull())
         val imagePart = MultipartBody.Part.createFormData("profilePicture", "profile.jpg", requestFile)
 
-        // Convert fields into request bodies using the new approach
+        // Convert fields into request bodies
         val usernamePart = username.toRequestBody("text/plain".toMediaTypeOrNull())
         val emailPart = email.toRequestBody("text/plain".toMediaTypeOrNull())
+        val aboutPart = about.toRequestBody("text/plain".toMediaTypeOrNull())
         val passwordPart = password.toRequestBody("text/plain".toMediaTypeOrNull())
 
         // Call API
-        val request = api.signup(usernamePart, emailPart, passwordPart, imagePart)
+        val request = api.signup(usernamePart, emailPart, aboutPart, passwordPart, imagePart)
         request.enqueue(object : Callback<SignUpResponse> {
             override fun onResponse(call: Call<SignUpResponse>, response: Response<SignUpResponse>) {
                 callback(response)
@@ -93,6 +108,4 @@ class AuthRepository(context: Context) {
             callback(false)
         }
     }
-
-
 }

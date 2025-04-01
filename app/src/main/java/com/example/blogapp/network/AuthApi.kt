@@ -28,6 +28,7 @@ data class SignUpResponse(
 data class User(
     val username: String,
     val email: String,
+    val about: String,
     val profilePicture: String
 )
 // Data class for user login request
@@ -49,6 +50,7 @@ interface AuthApi {
     fun signup(
         @Part("username") username: RequestBody,
         @Part("email") email: RequestBody,
+        @Part("about") about: RequestBody,
         @Part("password") password: RequestBody,
         @Part profilePicture: MultipartBody.Part
     ): Call<SignUpResponse>

@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,7 +11,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -25,9 +23,11 @@ import com.example.blogapp.repository.AuthRepository
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignupScreen(navController: NavController) {
-    var username by remember { mutableStateOf("") } // ✅ New state for username
+    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var about by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -40,6 +40,10 @@ fun SignupScreen(navController: NavController) {
                 selectedImageUri = uri
             }
         }
+
+    val isFormValid = username.isNotBlank() && email.isNotBlank() && about.isNotBlank() &&
+            password.isNotBlank() && confirmPassword.isNotBlank() &&
+            password == confirmPassword && selectedImageUri != null
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -66,7 +70,6 @@ fun SignupScreen(navController: NavController) {
                     contentDescription = "Selected Image",
                     modifier = Modifier
                         .size(100.dp)
-                        .background(Color.Gray, RoundedCornerShape(12.dp))
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -81,7 +84,6 @@ fun SignupScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ✅ New Username Field
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
@@ -101,9 +103,27 @@ fun SignupScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
+                value = about,
+                onValueChange = { about = it },
+                label = { Text("About") },
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Password") },
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                label = { Text("Confirm Password") },
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -111,23 +131,20 @@ fun SignupScreen(navController: NavController) {
 
             Button(
                 onClick = {
-                    if (selectedImageUri != null) {
-                        authRepository.signup(context, username, email, password, selectedImageUri!!) { response ->
+                    authRepository.signup(context, username, email, about, password, selectedImageUri!!) { response ->
                         if (response?.isSuccessful == true) {
-                                navController.navigate("login")
-                            } else {
-                                val errorMessage = response?.errorBody()?.string() ?: "Unknown error"
-                                message = "Signup failed: $errorMessage"
-                            }
+                            navController.navigate("login")
+                        } else {
+                            val errorMessage = response?.errorBody()?.string() ?: "Unknown error"
+                            message = "Signup failed: $errorMessage"
                         }
-                    } else {
-                        message = "Please select an image!"
                     }
                 },
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
+                    .height(50.dp),
+                enabled = isFormValid
             ) {
                 Text(text = "Create Account", fontSize = 18.sp)
             }
@@ -135,7 +152,7 @@ fun SignupScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = message,
-                color = Color.Red,
+                color = MaterialTheme.colorScheme.error,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )

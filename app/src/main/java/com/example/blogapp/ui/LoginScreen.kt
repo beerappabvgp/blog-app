@@ -44,12 +44,6 @@ fun LoginScreen(navController: NavController) {
     var passwordVisible by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val tokenManager = TokenManager(context)
-    val authViewModel: AuthViewModel = viewModel(
-        factory = AuthViewModelFactory(tokenManager)
-    )
-
-    // Watch for userProfile changes
-    val userProfile by authViewModel.userProfile.collectAsState()
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -116,17 +110,12 @@ fun LoginScreen(navController: NavController) {
             Button(
                 onClick = {
                     isLoading = true
-                    scope.launch {
-                        authRepository.login(email, password) { response ->
-                            isLoading = false
-                            authViewModel.handleLoginResponse(response) { success, errorMessage ->
-                                if (success) {
-                                    message = ""
-                                    // No immediate navigation here
-                                } else {
-                                    message = "Login failed: $errorMessage"
-                                }
-                            }
+                    authRepository.login(email, password) { success ->
+                        isLoading = false
+                        if (success) {
+                            navController.navigate("dashboard")
+                        } else {
+                            message = "Invalid email or password"
                         }
                     }
                 },
@@ -147,13 +136,6 @@ fun LoginScreen(navController: NavController) {
             if (message.isNotEmpty()) {
                 Text(message, color = Color.Red, fontSize = 14.sp)
             }
-        }
-    }
-
-    // When the user profile is updated, navigate to the dashboard
-    if (userProfile != null) {
-        LaunchedEffect(userProfile) {
-            navController.navigate("dashboard")
         }
     }
 }

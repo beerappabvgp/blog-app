@@ -1,32 +1,34 @@
 package com.example.blogapp.utils
 
 import android.content.Context
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
+import android.content.SharedPreferences
+import com.example.blogapp.network.User
+import com.google.gson.Gson
 
 class TokenManager(context: Context) {
-
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM) // Updated key scheme
-        .build()
-
-    private val sharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        "secure_prefs",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val prefs: SharedPreferences = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    private val gson = Gson()
 
     fun saveToken(token: String) {
-        sharedPreferences.edit().putString("auth_token", token).apply()
+        prefs.edit().putString("jwt_token", token).apply()
     }
 
     fun getToken(): String? {
-        return sharedPreferences.getString("auth_token", null)
+        return prefs.getString("jwt_token", null)
     }
 
     fun clearToken() {
-        sharedPreferences.edit().remove("auth_token").apply()
+        prefs.edit().remove("jwt_token").apply()
+        prefs.edit().remove("user_data").apply()
+    }
+
+    fun saveUser(user: User) {
+        val json = gson.toJson(user)
+        prefs.edit().putString("user_data", json).apply()
+    }
+
+    fun getUser(): User? {
+        val json = prefs.getString("user_data", null)
+        return if (json != null) gson.fromJson(json, User::class.java) else null
     }
 }
