@@ -40,11 +40,12 @@ data class Author(
     val profilePicture: String  // New field
 )
 
+// Modify BlogUpdateRequest to accept List<MultipartBody.Part>
 data class BlogUpdateRequest(
     val title: String,
     val content: String,
-    val images: List<String>?,
-    val imagesToDelete: List<String>
+    val images: List<MultipartBody.Part>?, // Multipart form-data for images
+    val imagesToDelete: List<String> // List of image URLs or IDs to be deleted
 )
 
 
@@ -69,11 +70,15 @@ interface BlogApi {
     @GET("blogs/{id}")
     suspend fun getBlogDetails(@Header("Authorization") token: String, @retrofit2.http.Path("id") id: String): Response<Blog>
 
+    @Multipart
     @PATCH("blogs/{id}")
     suspend fun updateBlog(
         @Path("id") blogId: String,
-        @Body request: BlogUpdateRequest,  // Pass the custom request object
-        @Header("Authorization") token: String // Keep token as a header
+        @Header("Authorization") token: String,
+        @Part("title") title: RequestBody,
+        @Part("content") content: RequestBody,
+        @Part images: List<MultipartBody.Part>?,  // Updated images
+        @Part("imagesToDelete") imagesToDelete: RequestBody // Send imagesToDelete as JSON string
     ): Response<Blog>
 
 

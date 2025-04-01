@@ -1,10 +1,17 @@
 package com.example.blogapp.ui.screens
 
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.database.Cursor
+import android.net.Uri
+import android.provider.MediaStore
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -30,6 +37,13 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.blogapp.utils.TokenManager
 import com.example.blogapp.viewmodel.BlogDetailViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.lazy.items
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 
 @Composable
 fun EditBlogScreen(navController: NavController, blogId: String) {
@@ -43,8 +57,9 @@ fun EditBlogScreen(navController: NavController, blogId: String) {
     var content by remember { mutableStateOf("") }
     var images by remember { mutableStateOf<List<String>>(emptyList()) }
     var imagesToDelete by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
 
-    val isLoading = blogDetailViewModel.isLoading
+    val isFetching = blogDetailViewModel.isLoading
     val errorMessage = blogDetailViewModel.errorMessage
     val blogDetails = blogDetailViewModel.blog
 
@@ -68,6 +83,16 @@ fun EditBlogScreen(navController: NavController, blogId: String) {
             navController.navigate("dashboard")
         }
     }
+
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents(),
+        onResult = { uris ->
+            // Convert Uri list to file paths or URLs (string)
+            val newImages = uris.map { it.toString() }
+            images = images + newImages
+        }
+    )
 
     Column(
         modifier = Modifier
@@ -132,11 +157,24 @@ fun EditBlogScreen(navController: NavController, blogId: String) {
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        // New Image Upload Button
+        Button(
+            onClick = {
+                // Trigger the image picker
+                imagePickerLauncher.launch("image/*")
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Upload New Images")
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
         errorMessage?.let {
             Text(text = it, color = MaterialTheme.colorScheme.error)
         }
 
-        if (isLoading) {
+        if (isFetching) {
             CircularProgressIndicator()
         }
 
@@ -145,17 +183,20 @@ fun EditBlogScreen(navController: NavController, blogId: String) {
         // Update Blog button
         Button(
             onClick = {
-                val updatedBlogObj = Blog(
-                    _id = blogId,
-                    title = title,
-                    content = content,
-                    author = blogDetails?.author ?: return@Button,
-                    images = images,
-                    createdAt = blogDetails?.createdAt ?: ""
-                )
+                // Convert images to MultipartBody.Part
+                val token = "Bearer ${tokenManager.getToken()}"
+                val imagesParts = images.map { uri ->
+                    val file = File(getRealPathFromURI(context, Uri.parse(uri)) ?: return@map null)
+                    val requestFile = file.asRequestBody("image/*".toMediaTypeOrNull())
+                    MultipartBody.Part.createFormData("images", file.name, requestFile)
+                }.filterNotNull()
+
+                val titlePart = title
+                val contentPart = content
 
                 // Pass imagesToDelete when updating the blog
-                editBlogViewModel.updateBlog(blogId, title, content, images, imagesToDelete)
+
+                editBlogViewModel.updateBlog(blogId, titlePart, contentPart, imagesParts, imagesToDelete)
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -170,3 +211,6 @@ fun EditBlogScreen(navController: NavController, blogId: String) {
         }
     }
 }
+
+// **Function to get real image path**
+

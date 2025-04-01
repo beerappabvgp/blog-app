@@ -10,6 +10,8 @@ import com.example.blogapp.network.BlogRetrofitClient
 import com.example.blogapp.network.BlogUpdateRequest
 import com.example.blogapp.utils.TokenManager
 import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.Response
 
 class EditBlogViewModel(private val tokenManager: TokenManager) : ViewModel() {
@@ -17,19 +19,34 @@ class EditBlogViewModel(private val tokenManager: TokenManager) : ViewModel() {
     var isLoading by mutableStateOf(false)
     var errorMessage: String? by mutableStateOf(null)
 
-    // This function will be used to update the blog
-    fun updateBlog(blogId: String, title: String, content: String, images: List<String>, imagesToDelete: List<String>) {
+    fun updateBlog(
+        blogId: String,
+        title: String,
+        content: String,
+        images: List<MultipartBody.Part>,
+        imagesToDelete: List<String>
+    ) {
         viewModelScope.launch {
             isLoading = true
             val token = "Bearer ${tokenManager.getToken()}"
+
             try {
-                // Create a BlogUpdateRequest containing the updated title, content, and images
-                val request = BlogUpdateRequest(title, content, images, imagesToDelete)
+                val titlePart = RequestBody.create(MultipartBody.FORM, title)
+                val contentPart = RequestBody.create(MultipartBody.FORM, content)
+
+                // Convert imagesToDelete list into a JSON string (if required)
+                val imagesToDeleteJson = RequestBody.create(
+                    MultipartBody.FORM,
+                    imagesToDelete.joinToString(",") { "\"$it\"" }
+                )
 
                 val response: Response<Blog> = BlogRetrofitClient.instance.updateBlog(
                     blogId,
-                    request,  // Send the request object which contains both the blog and imagesToDelete
-                    token
+                    token,
+                    titlePart,
+                    contentPart,
+                    images, // New images as MultipartBody.Part
+                    imagesToDeleteJson // Images to delete as JSON
                 )
 
                 if (response.isSuccessful) {
@@ -46,6 +63,5 @@ class EditBlogViewModel(private val tokenManager: TokenManager) : ViewModel() {
             }
         }
     }
-
-
 }
+
