@@ -26,6 +26,7 @@ data class SignUpResponse(
 
 // Nested data class for user details in the response
 data class User(
+    val _id: String,
     val username: String,
     val email: String,
     val about: String,

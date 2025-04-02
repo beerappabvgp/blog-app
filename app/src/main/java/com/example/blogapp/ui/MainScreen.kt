@@ -70,7 +70,7 @@ fun MainScreen(navController: NavHostController, themeViewModel: ThemeViewModel)
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
             if (isLoggedIn && currentRoute == "landing") {
-                BlogListScreen() // ✅ Show blog list when logged in
+                BlogListScreen(navController) // ✅ Show blog list when logged in
             } else {
                 AppNavigation(navController)
             }

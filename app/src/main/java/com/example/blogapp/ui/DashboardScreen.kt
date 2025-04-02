@@ -1,5 +1,6 @@
 package com.example.blogapp.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,6 +31,7 @@ import com.example.blogapp.network.User
 import com.example.blogapp.utils.TokenManager
 import com.example.blogapp.viewmodel.DashboardViewModel
 import com.example.blogapp.viewmodel.DashboardViewModelFactory
+import com.example.blogapp.viewmodel.DeleteBlogViewModel
 import com.example.blogapp.viewmodel.ThemeViewModel
 import kotlin.math.log
 
@@ -111,11 +113,31 @@ fun BlogItem(
 ) {
     val viewModel: ThemeViewModel = viewModel()
     val isDarkTheme by viewModel.isDarkTheme.collectAsState()
+    val context = LocalContext.current
+    val tokenManager = remember { TokenManager(context) }
+    val deleteBlogViewModel: DeleteBlogViewModel = viewModel {DeleteBlogViewModel(tokenManager)}
+
+    // Use MaterialTheme for dark and light theme colors
     val cardColor = if (isDarkTheme) {
-        Color.Black // Dark background for dark theme
+        MaterialTheme.colorScheme.surface // Dark background for dark theme
     } else {
-        Color.White // Light background for light theme
+        MaterialTheme.colorScheme.background // Light background for light theme
     }
+
+    LaunchedEffect(deleteBlogViewModel.deleteSuccess) {
+        if (deleteBlogViewModel.deleteSuccess) {
+            Toast.makeText(context, "Blog deleted successfully", Toast.LENGTH_SHORT).show()
+            navController.navigate("dashboard") // Navigate back
+        }
+    }
+
+    // Show error message if deletion fails
+    LaunchedEffect(deleteBlogViewModel.errorMessage) {
+        deleteBlogViewModel.errorMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = cardColor),
@@ -148,7 +170,7 @@ fun BlogItem(
                 text = blog.title,
                 fontWeight = FontWeight.Bold,
                 fontSize = 22.sp,
-                color = Color(0xFF333333),
+                color = MaterialTheme.colorScheme.onSurface, // Theme text color
                 modifier = Modifier.padding(bottom = 6.dp)
             )
 
@@ -156,7 +178,7 @@ fun BlogItem(
             Text(
                 text = blog.content,
                 fontSize = 16.sp,
-                color = Color(0xFF666666),
+                color = MaterialTheme.colorScheme.onSurfaceVariant, // Theme content color
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -172,7 +194,7 @@ fun BlogItem(
                 // Edit Button
                 Button(
                     onClick = { navController.navigate("editBlog/${blog._id}") },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF007BFF)), // Blue
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .weight(1f)
@@ -188,13 +210,14 @@ fun BlogItem(
                     Text("Edit", fontSize = 16.sp, color = Color.White)
                 }
 
-
                 Spacer(modifier = Modifier.width(12.dp))
 
                 // Delete Button
                 Button(
-                    onClick = {},
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE63946)), // Red
+                    onClick = {
+                        deleteBlogViewModel.deleteBlog(blog._id)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .weight(1f)
@@ -213,3 +236,4 @@ fun BlogItem(
         }
     }
 }
+
