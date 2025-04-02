@@ -10,13 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,7 +25,6 @@ import com.example.blogapp.network.Blog
 import com.example.blogapp.utils.TokenManager
 import com.example.blogapp.viewmodel.LikeDislikeBlogViewModel
 
-
 @Composable
 fun BlogItem(
     blog: Blog,
@@ -39,20 +33,17 @@ fun BlogItem(
 ) {
     val likeDislikeBlogViewModel: LikeDislikeBlogViewModel = viewModel { LikeDislikeBlogViewModel(tokenManager) }
 
-    val likeSuccess by likeDislikeBlogViewModel.likeSuccess.collectAsState()
-    val likeCount by likeDislikeBlogViewModel.likeCount.collectAsState()
+    val currentUser = tokenManager.getUser()
+    val currentUserId = currentUser?._id ?: ""
 
-    val currentUserId = tokenManager.getUser()?._id
-    val isInitiallyLiked = blog.likes.contains(currentUserId)
-    Log.d("BlogItem:", "Isinitially Liked $isInitiallyLiked");
-    // Maintain state for like status
-    var isLiked by remember { mutableStateOf(isInitiallyLiked) }
-    var dynamicLikeCount by remember { mutableStateOf(blog.likes.size) }
+    // Using rememberSaveable to preserve state across configuration changes
+    var isLiked by rememberSaveable { mutableStateOf(blog.likes.contains(currentUserId)) }
+    var likeCount by rememberSaveable { mutableStateOf(blog.likes.size) }
 
-    // Observe ViewModel changes
-    LaunchedEffect(likeSuccess, likeCount) {
-        likeSuccess[blog._id]?.let { isLiked = it }
-        likeCount[blog._id]?.let { dynamicLikeCount = it }
+    LaunchedEffect(currentUserId) {
+        // Reset state when user logs in or out
+        isLiked = blog.likes.contains(currentUserId)
+        likeCount = blog.likes.size
     }
 
     Box(
@@ -62,9 +53,7 @@ fun BlogItem(
             .border(1.dp, Color.LightGray, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .padding(16.dp)
-            .clickable {
-                navController.navigate("blogDetail/${blog._id}")
-            }
+            .clickable { navController.navigate("blogDetail/${blog._id}") }
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Profile Info
@@ -81,7 +70,6 @@ fun BlogItem(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-
                 Column {
                     Text(
                         text = blog.author.username ?: "Unknown",
@@ -140,24 +128,23 @@ fun BlogItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = {
-                    likeDislikeBlogViewModel.toggleLike(blog._id)
+                    likeDislikeBlogViewModel.toggleLike(blog._id) { liked, count ->
+                        isLiked = liked
+                        likeCount = count
+                    }
                 }) {
                     Icon(
                         imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = if (isLiked) "Liked" else "Not Liked",
-                        tint = if (isLiked || isInitiallyLiked) Color.Red else Color.Gray
+                        tint = if (isLiked) Color.Red else Color.Gray
                     )
                 }
 
                 Text(
-                    text = "Likes: $dynamicLikeCount",
+                    text = "Likes: $likeCount",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
     }
 }
-
-
-
-
