@@ -23,6 +23,7 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.blogapp.network.Blog
 import com.example.blogapp.utils.TokenManager
+import com.example.blogapp.viewmodel.AddCommentViewModel
 import com.example.blogapp.viewmodel.LikeDislikeBlogViewModel
 
 @Composable
@@ -32,18 +33,26 @@ fun BlogItem(
     tokenManager: TokenManager
 ) {
     val likeDislikeBlogViewModel: LikeDislikeBlogViewModel = viewModel { LikeDislikeBlogViewModel(tokenManager) }
+    val addCommentViewModel: AddCommentViewModel = viewModel { AddCommentViewModel(tokenManager) }
 
     val currentUser = tokenManager.getUser()
     val currentUserId = currentUser?._id ?: ""
 
-    // Using rememberSaveable to preserve state across configuration changes
     var isLiked by rememberSaveable { mutableStateOf(blog.likes.contains(currentUserId)) }
     var likeCount by rememberSaveable { mutableStateOf(blog.likes.size) }
 
-    LaunchedEffect(currentUserId) {
-        // Reset state when user logs in or out
-        isLiked = blog.likes.contains(currentUserId)
-        likeCount = blog.likes.size
+    // Comments list
+    var comments by remember { mutableStateOf(blog.comments) }
+
+    // Only observe comments for this specific blog
+    val newComments by addCommentViewModel.newComments.collectAsState()
+    val newCommentForThisBlog = newComments[blog._id]
+
+    // Update UI when a new comment is added
+    LaunchedEffect(newCommentForThisBlog) {
+        newCommentForThisBlog?.let {
+            comments = listOf(it) + comments // Add new comment to the top
+        }
     }
 
     Box(
@@ -56,7 +65,6 @@ fun BlogItem(
             .clickable { navController.navigate("blogDetail/${blog._id}") }
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Profile Info
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val profilePicture = blog.author.profilePicture
                 if (!profilePicture.isNullOrEmpty()) {
@@ -71,38 +79,22 @@ fun BlogItem(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
-                    Text(
-                        text = blog.author.username ?: "Unknown",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    Text(text = blog.author.username ?: "Unknown", style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = blog.author.about ?: "No information available",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    Text(text = blog.author.about ?: "No information available", style = MaterialTheme.typography.bodySmall)
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Blog Title
-            Text(
-                text = blog.title ?: "Default title",
-                style = MaterialTheme.typography.headlineSmall.copy(fontSize = 20.sp),
-            )
+            Text(text = blog.title ?: "Default title", style = MaterialTheme.typography.headlineSmall.copy(fontSize = 20.sp))
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Blog Content
-            Text(
-                text = blog.content ?: "Default content",
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
-                maxLines = 5
-            )
+            Text(text = blog.content ?: "Default content", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp), maxLines = 5)
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Blog Images (if available)
             if (!blog.images.isNullOrEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(blog.images) { imageUrl ->
@@ -121,7 +113,6 @@ fun BlogItem(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Like/Dislike Button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -139,11 +130,18 @@ fun BlogItem(
                         tint = if (isLiked) Color.Red else Color.Gray
                     )
                 }
+                Text(text = "Likes: $likeCount", style = MaterialTheme.typography.bodyMedium)
+            }
 
-                Text(
-                    text = "Likes: $likeCount",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Column {
+                comments.take(3).forEach { comment ->
+                    CommentItem(comment = comment)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                AddCommentSection(blog._id, addCommentViewModel)
             }
         }
     }

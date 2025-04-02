@@ -35,11 +35,6 @@ data class Blog(
     val comments: List<Comment> // New field for comments
 )
 
-data class Comment(
-    val content: String, // Comment content
-    val userId: Author,  // Author details for the comment
-    val createdAt: String
-)
 
 data class Author(
     val _id: String,
@@ -49,6 +44,25 @@ data class Author(
     val profilePicture: String
 )
 
+// Data class for comment request
+data class CreateCommentRequest(
+    val content: String,  // Comment content
+    val images: List<MultipartBody.Part>? = null // Images as multipart files
+)
+
+// Data class for comment response
+data class CreateCommentResponse(
+    val message: String,
+    val blog: Blog
+)
+
+// Updated Comment class to include images
+data class Comment(
+    val content: String, // Comment content
+    val userId: Author,  // Author details
+    val images: List<String>? = null, // List of image URLs
+    val createdAt: String
+)
 
 
 // Modify BlogUpdateRequest to accept List<MultipartBody.Part>
@@ -112,6 +126,15 @@ interface BlogApi {
         @Header("Authorization") token: String,
         @Path("id") blogId: String
     ): Response<LikeBlogResponse>
+
+    @Multipart
+    @POST("blogs/{id}/comment")
+    suspend fun addComment(
+        @Header("Authorization") token: String,
+        @Path("id") blogId: String,
+        @Part("content") content: RequestBody,
+        @Part images: List<MultipartBody.Part>? = null
+    ): Response<CreateCommentResponse>
 
 }
 
