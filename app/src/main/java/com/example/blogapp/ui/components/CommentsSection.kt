@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -18,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,12 +29,32 @@ import com.example.blogapp.network.Blog
 import com.example.blogapp.network.Comment
 import com.example.blogapp.utils.TokenManager
 import com.example.blogapp.viewmodel.AddCommentViewModel
+import com.example.blogapp.viewmodel.LikeCommentViewModel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
 
 
 @Composable
-fun CommentItem(comment: Comment) {
+fun CommentItem(comment: Comment, blogId: String) {
+    val context = LocalContext.current
+    val tokenManager = TokenManager(context)
+    val token = tokenManager.getToken()
+    val userId = tokenManager.getUser()?._id
+
+    val initialCount = comment.likes.size
+    val liked = comment.likes.any { it._id == userId }
+//    var isLiked by rememberSaveable { mutableStateOf(blog.likes.any { it._id == currentUserId }) }
+    // Create a ViewModel for each comment
+    val likeViewModel: LikeCommentViewModel = remember {
+        LikeCommentViewModel(initialCount, liked)
+    }
+
+    // Observe like count and like state from ViewModel
+    val likeCount by likeViewModel.likeCount.collectAsState()
+    val isLiked by likeViewModel.isLiked.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -48,8 +71,6 @@ fun CommentItem(comment: Comment) {
                     .clip(RoundedCornerShape(20.dp))
             )
         }
-
-        Log.d("comment is from CommentItem: ", "comment: $comment")
 
         Spacer(modifier = Modifier.width(8.dp))
 
@@ -81,9 +102,33 @@ fun CommentItem(comment: Comment) {
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Step 2: Add Like Button
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable {
+                    coroutineScope.launch {
+                        likeViewModel.toggleLike(blogId, comment._id!! , token!!)
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "Like Button",
+                    tint = if (isLiked) Color.Red else Color.Gray,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                Text(text = likeCount.toString(), fontSize = 14.sp)
+            }
         }
     }
 }
+
 
 @Composable
 fun CommentInputSection(

@@ -38,7 +38,7 @@ fun BlogItem(
     val currentUser = tokenManager.getUser()
     val currentUserId = currentUser?._id ?: ""
 
-    var isLiked by rememberSaveable { mutableStateOf(blog.likes.contains(currentUserId)) }
+    var isLiked by rememberSaveable { mutableStateOf(blog.likes.any { it._id == currentUserId }) }
     var likeCount by rememberSaveable { mutableStateOf(blog.likes.size) }
 
     // Comments list
@@ -137,7 +137,7 @@ fun BlogItem(
 
             Column {
                 comments.take(3).forEach { comment ->
-                    CommentItem(comment = comment)
+                    CommentItem(comment = comment, blog._id)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 

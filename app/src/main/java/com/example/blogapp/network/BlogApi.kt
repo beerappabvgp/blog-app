@@ -31,7 +31,7 @@ data class Blog(
     val author: Author,  // Author details
     val images: List<String>? = null,
     val createdAt: String,
-    val likes: List<String>,
+    val likes: List<Author>,
     val comments: List<Comment> // New field for comments
 )
 
@@ -58,9 +58,11 @@ data class CreateCommentResponse(
 
 // Updated Comment class to include images
 data class Comment(
+    val _id: String?,
     val content: String, // Comment content
     val userId: Author,  // Author details
     val images: List<String>? = null, // List of image URLs
+    val likes: List<Author>,
     val createdAt: String
 )
 
@@ -81,6 +83,19 @@ data class LikeBlogResponse(
     val message: String,
     val liked: Boolean,
     val likeCount: Int
+)
+
+// Request data class for liking a comment
+data class LikeCommentRequest(
+    val userId: String // User ID of the person liking the comment
+)
+
+// Response data class for liking a comment
+data class LikeCommentResponse(
+    val success: Boolean,
+    val message: String,
+    val likes: Int,  // Updated like count
+    val userLiked: Boolean // Indicates if the user liked the comment
 )
 
 
@@ -136,5 +151,12 @@ interface BlogApi {
         @Part images: List<MultipartBody.Part>? = null
     ): Response<CreateCommentResponse>
 
+
+    @POST("blogs/{blogId}/comments/{commentId}/like")
+    suspend fun likeComment(
+        @Header("Authorization") token: String,
+        @Path("blogId") blogId: String,
+        @Path("commentId") commentId: String
+    ): Response<LikeCommentResponse>
 }
 
